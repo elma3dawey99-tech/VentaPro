@@ -1,0 +1,27 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'edu.deltauniv.ventapro'
+    compileSdk 34
+    defaultConfig {
+        applicationId 'edu.deltauniv.ventapro'
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName '1.0.0'
+    }
+    // Release signing comes from GitHub secrets (VP_KEYSTORE_B64, VP_KS_PASS) when they exist;
+    // otherwise the APK is signed with the standard debug key.
+    def ks = System.getenv('VP_KEYSTORE_FILE')
+    signingConfigs {
+        if (ks) {
+            release {
+                storeFile file(ks)
+                storePassword System.getenv('VP_KS_PASS')
+                keyAlias 'ventapro'
+                keyPassword System.getenv('VP_KS_PASS')
+            }
+        }
+    }
+    buildTypes { release { minifyEnabled false; signingConfig ks ? signingConfigs.release : signingConfigs.debug } }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}

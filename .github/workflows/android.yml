@@ -1,0 +1,33 @@
+# Builds the VentaPro Android app (APK) and publishes it as a GitHub Release.
+# Run it from the Actions tab ("Run workflow") or push a tag like android-v1.0.0.
+# Optional: add repository secrets VP_KEYSTORE_B64 (base64 keystore, alias "ventapro") and VP_KS_PASS
+# to sign every build with the same key; without them the standard debug key is used.
+name: Android APK
+on:
+  push:
+    tags: ['android-v*']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: '8.7' }
+      - name: Restore signing key (if configured)
+        env: { KS: '${{ secrets.VP_KEYSTORE_B64 }}' }
+        run: |
+          if [ -n "$KS" ]; then echo "$KS" | base64 -d > "$RUNNER_TEMP/vp.keystore"; echo "VP_KEYSTORE_FILE=$RUNNER_TEMP/vp.keystore" >> "$GITHUB_ENV"; fi
+      - run: gradle -p android assembleRelease --no-daemon
+        env: { VP_KS_PASS: '${{ secrets.VP_KS_PASS }}' }
+      - run: cp android/app/build/outputs/apk/release/app-release.apk VentaPro.apk
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'android-latest' }}
+          name: VentaPro for Android
+          body: Download VentaPro.apk on the phone and open it to install (allow "Install unknown apps" once).
+          files: VentaPro.apk
