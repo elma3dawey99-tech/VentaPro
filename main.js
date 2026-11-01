@@ -2,7 +2,7 @@
 // The simulator itself lives online, so every update published to the web app reaches all lab PCs instantly.
 // The shell itself updates from GitHub Releases (electron-updater): new versions download in the
 // background and install when the app is closed.
-const { app, BrowserWindow, shell, Menu, session, net } = require('electron');
+const { app, BrowserWindow, shell, Menu, session, net, ipcMain } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
@@ -47,7 +47,7 @@ app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(
 function createSplash() {
   splash = new BrowserWindow({ width: 760, height: 440, frame: false, resizable: false, movable: true, center: true, show: false,
     backgroundColor: '#0B1528', alwaysOnTop: true, skipTaskbar: false, icon: path.join(__dirname, 'icon.png'),
-    webPreferences: { contextIsolation: true, sandbox: true } });
+    webPreferences: { contextIsolation: true, sandbox: true, preload: path.join(__dirname, 'preload.js') } });
   const remote = fs.existsSync(splashFile()) ? splashFile() : path.join(__dirname, 'splash.html');
   splash.loadFile(remote, { query: { v: app.getVersion() } });
   splash.once('ready-to-show', () => { splash.show(); shownAt = Date.now(); });
@@ -74,13 +74,13 @@ function createMain() {
     width: 1440, height: 900, minWidth: 1024, minHeight: 680, show: false,
     backgroundColor: '#EEF2F0', title: 'VentaPro', icon: path.join(__dirname, 'icon.png'),
     autoHideMenuBar: true,
-    webPreferences: { contextIsolation: true, sandbox: true, spellcheck: false }
+    webPreferences: { contextIsolation: true, sandbox: true, spellcheck: false, preload: path.join(__dirname, 'preload.js') }
   });
   win.on('page-title-updated', e => e.preventDefault());
   win.loadURL(startUrl);
 
   win.webContents.on('did-finish-load', () => {
-    applyCss();
+    applyCss(); fsBar();
     if (!mainReady) { mainReady = true; revealMain(); }
   });
   win.webContents.on('dom-ready', () => {
@@ -102,10 +102,41 @@ function createMain() {
     if (input.type !== 'keyDown') return;
     if (input.key === 'F11') { win.setFullScreen(!win.isFullScreen()); e.preventDefault(); }
     if (input.key === 'F5' || (input.control && input.key.toLowerCase() === 'r')) { win.webContents.reloadIgnoringCache(); e.preventDefault(); }
-    if (input.key === 'Escape' && win.isFullScreen()) win.setFullScreen(false);
   });
+  win.on('enter-full-screen', fsState); win.on('leave-full-screen', fsState);
   // safety: never keep the splash forever
   setTimeout(() => { if (!mainReady) { mainReady = true; revealMain(); } }, 20000);
+}
+
+// ---- window commands from the splash and the full-screen control bar ----
+ipcMain.on('vp-cmd', (e, c) => {
+  const fromSplash = splash && !splash.isDestroyed() && e.sender === splash.webContents;
+  const fromMain = win && !win.isDestroyed() && e.sender === win.webContents && e.senderFrame === win.webContents.mainFrame;
+  if (!fromSplash && !fromMain) return;
+  const w = fromSplash ? splash : win;
+  if (c === 'min') w.minimize();
+  else if (c === 'close') { if (fromSplash) app.quit(); else win.close(); }
+  else if (c === 'fs' && fromMain) win.setFullScreen(!win.isFullScreen());
+});
+// full screen hides the Windows taskbar; a slim bar slides down from the top edge with minimise / window / close
+const FSBAR = "(function(){if(window.__vpFs)return;var s=document.createElement('style');s.textContent='" +
+  "#vpHot{position:fixed;left:0;right:0;top:0;height:5px;z-index:2147483646;display:none}" +
+  "#vpBar{position:fixed;top:0;right:22px;z-index:2147483647;display:flex;gap:2px;padding:6px;background:rgba(14,26,44,.94);border:1px solid rgba(228,185,74,.45);border-top:0;border-radius:0 0 12px 12px;box-shadow:0 10px 26px rgba(0,0,0,.35);transform:translateY(-110%);transition:transform .22s ease;font:12px Segoe UI,sans-serif}" +
+  "#vpBar.on{transform:none}#vpBar button{all:unset;width:40px;height:30px;display:grid;place-items:center;border-radius:8px;color:#D5DEF0;cursor:pointer}" +
+  "#vpBar button:hover{background:rgba(255,255,255,.12);color:#fff}#vpBar button.x:hover{background:#C8443A}#vpBar svg{width:14px;height:14px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round}';" +
+  "document.head.appendChild(s);var h=document.createElement('div');h.id='vpHot';var b=document.createElement('div');b.id='vpBar';" +
+  "b.innerHTML='<button data-c=\"min\" title=\"Minimise\"><svg viewBox=\"0 0 14 14\"><path d=\"M2.5 7.5h9\"/></svg></button><button data-c=\"fs\" title=\"Exit full screen (F11)\"><svg viewBox=\"0 0 14 14\"><path d=\"M5 2v3H2M9 2v3h3M5 12V9H2M9 12V9h3\"/></svg></button><button class=\"x\" data-c=\"close\" title=\"Close VentaPro\"><svg viewBox=\"0 0 14 14\"><path d=\"M3 3l8 8M11 3l-8 8\"/></svg></button>';" +
+  "document.body.appendChild(h);document.body.appendChild(b);var t;function show(ms){b.classList.add('on');clearTimeout(t);if(ms)t=setTimeout(function(){b.classList.remove('on')},ms);}" +
+  "h.onmouseenter=function(){show(0)};b.onmouseenter=function(){clearTimeout(t)};b.onmouseleave=function(){show(900)};" +
+  "b.onclick=function(e){var k=e.target.closest('button');if(k&&window.vpShell)window.vpShell.cmd(k.dataset.c)};" +
+  "window.__vpFs=function(on){h.style.display=on?'block':'none';b.style.display=on?'flex':'none';if(on)show(3500);};})();";
+function fsBar() {
+  if (!win || win.isDestroyed() || !win.webContents.getURL().startsWith('https://script.google.com/')) return;
+  win.webContents.executeJavaScript(FSBAR).then(fsState).catch(() => {});
+}
+function fsState() {
+  if (!win || win.isDestroyed()) return;
+  win.webContents.executeJavaScript('window.__vpFs&&window.__vpFs(' + win.isFullScreen() + ')').catch(() => {});
 }
 
 // ---- self-update of the desktop app itself (GitHub Releases) ----
