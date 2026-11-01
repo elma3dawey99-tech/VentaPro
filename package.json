@@ -1,0 +1,51 @@
+{
+  "name": "ventsim",
+  "productName": "VentaPro",
+  "version": "1.3.0",
+  "description": "VentaPro – Mechanical Ventilation Simulator (ECC, Delta University). Designed by Youssef Mahrous Elmaadawy",
+  "author": "Youssef Mahrous Elmaadawy – ECC Department, Delta University",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis --x64 --publish never",
+    "release": "electron-builder --win nsis --x64 --publish always"
+  },
+  "devDependencies": {
+    "electron": "44.4.3",
+    "electron-builder": "26.16.1"
+  },
+  "build": {
+    "appId": "edu.deltauniv.ecc.ventsim",
+    "productName": "VentaPro",
+    "files": [
+      "main.js",
+      "offline.html",
+      "splash.html",
+      "icon.png"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "VentaPro",
+      "artifactName": "VentaPro-Setup-${version}.exe",
+      "include": "build/installer.nsh"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "elma3dawey99-tech",
+      "repo": "VentaPro",
+      "releaseType": "release"
+    }
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11"
+  },
+  "repository": "https://github.com/elma3dawey99-tech/VentaPro"
+}

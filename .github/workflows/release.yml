@@ -1,0 +1,23 @@
+# Builds the Windows installer and publishes it as a GitHub Release.
+# To ship a new desktop version: bump "version" in package.json, commit, then push a tag like v1.3.1.
+# Installed VentaPro apps pick the release up automatically and install it when closed.
+name: Release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,10 @@
+<!doctype html><html><head><meta charset="utf-8"><title>VentSim</title>
+<style>body{margin:0;height:100vh;display:grid;place-items:center;background:#EEF4F2;font:16px system-ui,sans-serif;color:#1E2A2E}
+.c{text-align:center;max-width:460px;padding:30px;background:#fff;border-radius:18px;box-shadow:0 10px 40px rgba(20,60,50,.12)}
+h1{font-size:22px;margin:0 0 8px}p{color:#66767C;margin:0 0 18px}button{background:#2E7D74;color:#fff;border:0;border-radius:10px;padding:11px 22px;font-size:15px;cursor:pointer}
+.d{width:10px;height:10px;border-radius:50%;background:#2E7D74;display:inline-block;margin-right:8px;animation:p 1.4s infinite}@keyframes p{50%{opacity:.3}}</style></head>
+<body><div class="c"><h1>No internet connection</h1><p>VentSim needs the network to load the simulator. It will reconnect by itself as soon as the connection is back.</p>
+<div style="margin-bottom:18px;color:#2E7D74"><span class="d"></span><span id="s">Trying again…</span></div><button id="b">Try now</button></div>
+<script>var u=new URLSearchParams(location.search).get('u');function go(){location.href=u;}document.getElementById('b').onclick=go;
+var n=10;setInterval(function(){n--;document.getElementById('s').textContent='Trying again in '+n+' s…';if(n<=0){n=10;if(navigator.onLine)go();}},1000);
+window.addEventListener('online',go);</script></body></html>
