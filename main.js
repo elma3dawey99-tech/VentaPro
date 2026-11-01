@@ -63,15 +63,18 @@ function revealMain() {
   if (!mainReady || !win) return;
   const wait = Math.max(0, SPLASH_MIN_MS - (Date.now() - shownAt));
   setTimeout(() => {
-    win.maximize(); if (cfg.fullscreen) win.setFullScreen(true); win.show(); win.focus();
+    if (!win.isFullScreen()) win.maximize();
+    win.show(); win.focus();
     if (splash && !splash.isDestroyed()) splash.destroy();
+    // apply full screen after the window is on screen (on Windows a hidden window can ignore it until clicked)
+    if (cfg.fullscreen !== false) setTimeout(() => { if (!win.isDestroyed()) { win.setFullScreen(true); win.focus(); fsState(); } }, 60);
   }, wait);
 }
 
 function createMain() {
   Menu.setApplicationMenu(null);
   win = new BrowserWindow({
-    width: 1440, height: 900, minWidth: 1024, minHeight: 680, show: false,
+    width: 1440, height: 900, minWidth: 1024, minHeight: 680, show: false, fullscreen: cfg.fullscreen !== false,
     backgroundColor: '#EEF2F0', title: 'VentaPro', icon: path.join(__dirname, 'icon.png'),
     autoHideMenuBar: true,
     webPreferences: { contextIsolation: true, sandbox: true, spellcheck: false, preload: path.join(__dirname, 'preload.js') }
@@ -118,18 +121,19 @@ ipcMain.on('vp-cmd', (e, c) => {
   else if (c === 'close') { if (fromSplash) app.quit(); else win.close(); }
   else if (c === 'fs' && fromMain) win.setFullScreen(!win.isFullScreen());
 });
-// full screen hides the Windows taskbar; a slim bar slides down from the top edge with minimise / window / close
+// full screen hides the Windows taskbar; a slim VentaPro title strip (always visible) keeps minimise / window / close
 const FSBAR = "(function(){if(window.__vpFs)return;var s=document.createElement('style');s.textContent='" +
-  "#vpHot{position:fixed;left:0;right:0;top:0;height:5px;z-index:2147483646;display:none}" +
-  "#vpBar{position:fixed;top:0;right:22px;z-index:2147483647;display:flex;gap:2px;padding:6px;background:rgba(14,26,44,.94);border:1px solid rgba(228,185,74,.45);border-top:0;border-radius:0 0 12px 12px;box-shadow:0 10px 26px rgba(0,0,0,.35);transform:translateY(-110%);transition:transform .22s ease;font:12px Segoe UI,sans-serif}" +
-  "#vpBar.on{transform:none}#vpBar button{all:unset;width:40px;height:30px;display:grid;place-items:center;border-radius:8px;color:#D5DEF0;cursor:pointer}" +
-  "#vpBar button:hover{background:rgba(255,255,255,.12);color:#fff}#vpBar button.x:hover{background:#C8443A}#vpBar svg{width:14px;height:14px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round}';" +
-  "document.head.appendChild(s);var h=document.createElement('div');h.id='vpHot';var b=document.createElement('div');b.id='vpBar';" +
-  "b.innerHTML='<button data-c=\"min\" title=\"Minimise\"><svg viewBox=\"0 0 14 14\"><path d=\"M2.5 7.5h9\"/></svg></button><button data-c=\"fs\" title=\"Exit full screen (F11)\"><svg viewBox=\"0 0 14 14\"><path d=\"M5 2v3H2M9 2v3h3M5 12V9H2M9 12V9h3\"/></svg></button><button class=\"x\" data-c=\"close\" title=\"Close VentaPro\"><svg viewBox=\"0 0 14 14\"><path d=\"M3 3l8 8M11 3l-8 8\"/></svg></button>';" +
-  "document.body.appendChild(h);document.body.appendChild(b);var t;function show(ms){b.classList.add('on');clearTimeout(t);if(ms)t=setTimeout(function(){b.classList.remove('on')},ms);}" +
-  "h.onmouseenter=function(){show(0)};b.onmouseenter=function(){clearTimeout(t)};b.onmouseleave=function(){show(900)};" +
+  "#vpBar{position:fixed;left:0;right:0;top:0;height:32px;z-index:2147483647;display:none;align-items:center;background:#0E1A2C;border-bottom:1px solid rgba(228,185,74,.35);font:600 13px Segoe UI,sans-serif;color:#E8EEF8;-webkit-user-select:none;user-select:none}" +
+  "#vpBar .t{padding-left:14px;letter-spacing:.3px}#vpBar .t b{color:#E4B94A;font-weight:600}#vpBar .sp{flex:1}" +
+  "#vpBar button{all:unset;width:46px;height:32px;display:grid;place-items:center;color:#C9D4EC;cursor:pointer}" +
+  "#vpBar button:hover{background:rgba(255,255,255,.12);color:#fff}#vpBar button.x:hover{background:#C42B1C;color:#fff}" +
+  "#vpBar svg{width:11px;height:11px;stroke:currentColor;stroke-width:1.3;fill:none}" +
+  "html.vpfs #sandboxFrame{position:fixed!important;top:32px!important;left:0!important;width:100vw!important;height:calc(100vh - 32px)!important}';" +
+  "document.head.appendChild(s);var b=document.createElement('div');b.id='vpBar';" +
+  "b.innerHTML='<span class=\"t\">Venta<b>Pro</b></span><span class=\"sp\"></span><button data-c=\"min\" title=\"Minimise\"><svg viewBox=\"0 0 11 11\"><path d=\"M1 5.5h9\"/></svg></button><button data-c=\"fs\" title=\"Exit full screen (F11)\"><svg viewBox=\"0 0 11 11\"><path d=\"M3 1h7v7M1 3h7v7H1z\"/></svg></button><button class=\"x\" data-c=\"close\" title=\"Close\"><svg viewBox=\"0 0 11 11\"><path d=\"M1 1l9 9M10 1l-9 9\"/></svg></button>';" +
+  "document.body.appendChild(b);" +
   "b.onclick=function(e){var k=e.target.closest('button');if(k&&window.vpShell)window.vpShell.cmd(k.dataset.c)};" +
-  "window.__vpFs=function(on){h.style.display=on?'block':'none';b.style.display=on?'flex':'none';if(on)show(3500);};})();";
+  "window.__vpFs=function(on){b.style.display=on?'flex':'none';document.documentElement.classList.toggle('vpfs',!!on);};})();";
 function fsBar() {
   if (!win || win.isDestroyed() || !win.webContents.getURL().startsWith('https://script.google.com/')) return;
   win.webContents.executeJavaScript(FSBAR).then(fsState).catch(() => {});

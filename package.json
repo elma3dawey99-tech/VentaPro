@@ -1,7 +1,7 @@
 {
   "name": "ventsim",
   "productName": "VentaPro",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "description": "VentaPro – Mechanical Ventilation Simulator (ECC, Delta University). Designed by Youssef Mahrous Elmaadawy",
   "author": "Youssef Mahrous Elmaadawy – ECC Department, Delta University",
   "main": "main.js",
