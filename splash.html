@@ -57,7 +57,12 @@ canvas{position:absolute;left:0;top:278px;width:760px;height:64px;opacity:0;anim
 .dots b{position:absolute;bottom:-10px;width:4px;height:4px;border-radius:50%;background:#7FE0CC;opacity:0;animation:rise linear infinite}
 @keyframes rise{0%{transform:translateY(0);opacity:0}15%{opacity:.5}100%{transform:translateY(-460px);opacity:0}}
 .out{animation:outFade .5s forwards}@keyframes outFade{to{opacity:0}}
+.wc{position:fixed;top:10px;right:10px;display:none;gap:4px;z-index:50;-webkit-app-region:no-drag}
+.wc button{width:34px;height:28px;border:0;border-radius:8px;background:rgba(255,255,255,.06);color:#C9D4EC;display:grid;place-items:center;cursor:pointer;transition:background .2s,color .2s}
+.wc button:hover{background:rgba(255,255,255,.16);color:#fff}.wc button.x:hover{background:#C8443A;color:#fff}
+.wc svg{width:12px;height:12px;stroke:currentColor;stroke-width:1.6;fill:none;stroke-linecap:round}
 </style></head><body>
+<div class="wc" id="wc"><button id="wmin" title="Minimise"><svg viewBox="0 0 12 12"><path d="M2 6.5h8"/></svg></button><button class="x" id="wcls" title="Close"><svg viewBox="0 0 12 12"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7"/></svg></button></div>
 <div class="au au1"></div><div class="au au2"></div><div class="au au3"></div>
 <div class="grain"></div>
 <div class="dots" id="dots"></div>
@@ -80,6 +85,10 @@ canvas{position:absolute;left:0;top:278px;width:760px;height:64px;opacity:0;anim
 <script>
 (function(){
   var q=new URLSearchParams(location.search).get('v'); document.getElementById('ver').textContent=q?('v'+q):'';
+  (function(){ var n=(q||'0').split('.').map(Number); if(n[0]>1||(n[0]===1&&(n[1]>3||(n[1]===3&&(n[2]||0)>=1)))){
+    document.getElementById('wc').style.display='flex';
+    function cmd(c){ document.title='vpcmd:'+c; setTimeout(function(){ document.title='VentaPro'; },50); }
+    document.getElementById('wmin').onclick=function(){ cmd('min'); }; document.getElementById('wcls').onclick=function(){ cmd('close'); }; } })();
   /* wordmark letters */
   var wm=document.getElementById('wm'), word='VentaPro';
   for(var k=0;k<word.length;k++){var s=document.createElement('span');s.textContent=word[k];if(k>=5)s.className='g';s.style.animationDelay=(1.9+k*0.08)+'s';wm.appendChild(s);}

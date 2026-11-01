@@ -51,6 +51,12 @@ function createSplash() {
   const remote = fs.existsSync(splashFile()) ? splashFile() : path.join(__dirname, 'splash.html');
   splash.loadFile(remote, { query: { v: app.getVersion() } });
   splash.once('ready-to-show', () => { splash.show(); shownAt = Date.now(); });
+  // window controls on the frameless splash (title used as a tiny command channel)
+  splash.on('page-title-updated', (e, t) => {
+    e.preventDefault();
+    if (t === 'vpcmd:min') splash.minimize();
+    else if (t === 'vpcmd:close') app.quit();
+  });
 }
 
 function revealMain() {
